@@ -1,0 +1,18 @@
+{% extends "base.html.twig" %}
+{% block title %}ERROR
+{% endblock %}
+{% block body %}
+	<style>
+		body {
+			display: flex;
+			align-items: center;
+			height: 100vh;
+			box-sizing: border-box;
+			flex-direction: column;
+		}
+	</style>
+	<h1>Произошла ошибка!</h1>
+	<br>
+	<h2>{{ mess }}</h2>
+
+{% endblock %}

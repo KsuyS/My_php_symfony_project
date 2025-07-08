@@ -1,0 +1,33 @@
+{% extends "base.html.twig" %}
+{% block title %}View User{% endblock %}
+{% block body %}
+	<style>
+		label {
+			font-weight: 600;
+			color: #2e3a87;
+			display: inline-block;
+			width: 150px;
+			vertical-align: top;
+		}
+	</style>
+	<a href="/view_all_users">Перейти к списку пользователей</a>
+	<h1>Данные о пользователе:</h1>
+	<label>First Name:</label>{{ firstName }}<br/>
+	<label>Last Name:</label>{{ lastName }}<br/>
+	<label>Middle Name:</label>{{ middleName }}<br/>
+	<label>Gender:</label>{{ gender }}<br/>
+	<label>Birth Date:</label>{{ birthDate }}<br/>
+	<label>Email:</label>{{ email }}<br/>
+	<label>Phone:</label>{{ phone }}<br/>
+	<label>Avatar path:
+		{% if avatarPath != null %}
+		</label><img width="200px" src="/../uploads/{{ avatarPath }}">
+	{% endif %}
+	<br><br>
+	<a href="/update_user/{{ userId }}">
+		<button>Изменить</button>
+	</a>
+	<a href="/delete_user/{{ userId }}">
+		<button>Удалить</button>
+	</a>
+{% endblock %}
