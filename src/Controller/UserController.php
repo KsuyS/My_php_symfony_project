@@ -3,9 +3,8 @@ declare(strict_types=1);
 
 namespace App\Controller;
 
-use App\Infrastructure\Database\ConnectionProvider;
-use App\Model\User;
-use App\Model\UserTable;
+use App\Entity\User;
+use App\Repository\UserRepository;
 use App\Utils;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\Request;
@@ -14,18 +13,17 @@ use Symfony\Component\HttpFoundation\Response;
 
 class UserController extends AbstractController
 {
+    private UserRepository $userRepository;
     private const DATE_TIME_FORMAT = 'Y-m-d';
     private const SUPPORT_MIME_TYPES = [
         'image/png' => 'png',
         'image/jpeg' => 'jpeg',
         'image/gif' => 'gif',
     ];
-    private UserTable $table;
 
-    public function __construct()
+    public function __construct(UserRepository $userRepository)
     {
-        $connection = ConnectionProvider::connectDatabase();
-        $this->table = new UserTable($connection);
+        $this->userRepository = $userRepository;
     }
 
     public function index(): Response
@@ -63,17 +61,17 @@ class UserController extends AbstractController
             null,
         );
 
-        if ($this->table->findByEmail($data->get('email')) != null) {
+        if ($this->userRepository->findByEmail($data->get('email')) != null) {
             $mess = 'Пользователь с таким email уже существует!';
             return $this->redirectToRoute('pageWithError', ['mess' => $mess]);
         }
 
-        if ($this->table->findByPhone($data->get('phone')) != null) {
+        if ($this->userRepository->findByPhone($data->get('phone')) != null) {
             $mess = 'Пользователь с таким телефоном уже существует!';
             return $this->redirectToRoute('pageWithError', ['mess' => $mess]);
         }
 
-        $userId = $this->table->saveUserToDatabase($user);
+        $userId = $this->userRepository->store($user);
         $file = $this->downloadImage($userId);
 
         if ($file === null && isset($_FILES['avatar_path']) && $_FILES['avatar_path']['error'] === UPLOAD_ERR_OK) {
@@ -82,7 +80,8 @@ class UserController extends AbstractController
         }
 
         if ($file != null) {
-            $this->table->saveAvatarToDatabase($userId, $file);
+            $user->setAvatarPath($file);
+            $this->userRepository->store($user);
         }
 
         return $this->redirectToRoute('view_user', ['userId' => $userId], Response::HTTP_SEE_OTHER);
@@ -119,7 +118,7 @@ class UserController extends AbstractController
 
     public function updateUser(int $userId, Request $data): Response
     {
-        $user = $this->table->find($userId);
+        $user = $this->userRepository->findById($userId);
         if (!$user) {
             $mess = 'Вы не можете обновить пользователя с помощью этого идентификатора!';
             return $this->redirectToRoute('pageWithError', ['mess' => $mess]);
@@ -128,7 +127,6 @@ class UserController extends AbstractController
         if ($data->isMethod('post')) {
             try {
                 $user = $this->updateUsersData($data);
-                $this->table->updateUser($user);
                 return $this->redirectToRoute('view_user', ['userId' => $user->getId()]);
             } catch (\Exception $e) {
                 return $this->redirectToRoute('pageWithError', ['mess' => $e->getMessage()]);
@@ -151,24 +149,9 @@ class UserController extends AbstractController
     private function updateUsersData(Request $data): User
     {
         $id = (int) $data->get('user_id');
-        $user = $this->table->find($id);
+        $user = $this->getUserById($id);
 
-        if ($user === null) {
-            throw new \Exception('Пользователь не найден!');
-        }
-
-        $email = $data->get('email');
-        $phone = $data->get('phone');
-
-        $existingUserByEmail = $this->table->findByEmail($email);
-        if ($existingUserByEmail !== null && $existingUserByEmail->getId() !== $id) {
-            throw new \Exception('Пользователь с таким email уже существует!');
-        }
-
-        $existingUserByPhone = $this->table->findByPhone($phone);
-        if ($existingUserByPhone !== null && $existingUserByPhone->getId() !== $id) {
-            throw new \Exception('Пользователь с таким телефоном уже существует!');
-        }
+        $this->validateUniqueEmailAndPhone($data, $id);
 
         $birthDate = Utils::parseDateTime($data->get('birth_date'), self::DATE_TIME_FORMAT);
         $birthDate = $birthDate->setTime(0, 0, 0);
@@ -178,21 +161,53 @@ class UserController extends AbstractController
         $user->setMiddleName(empty($data->get('middle_name')) ? null : $data->get('middle_name'));
         $user->setGender($data->get('gender'));
         $user->setBirthDate($birthDate);
-        $user->setEmail(empty($email) ? null : $email);
-        $user->setPhone(empty($phone) ? null : $phone);
+        $user->setEmail(empty($data->get('email')) ? null : $data->get('email'));
+        $user->setPhone(empty($data->get('phone')) ? null : $data->get('phone'));
 
         $file = $this->downloadImage($id);
-
-        if ($file === null && isset($_FILES['avatar_path']) && $_FILES['avatar_path']['error'] === UPLOAD_ERR_OK) {
-            throw new \Exception('Ошибка с расширением загружаемого файла!');
-        }
+        $this->handleAvatarUpload($file);
 
         if ($file !== null) {
             $user->setAvatarPath($file);
         }
 
+        $this->userRepository->store($user);
+
         return $user;
     }
+
+    private function getUserById(int $id): User
+    {
+        $user = $this->userRepository->findById($id);
+        if ($user === null) {
+            throw new \Exception('Пользователь не найден!');
+        }
+        return $user;
+    }
+
+    private function validateUniqueEmailAndPhone(Request $data, int $currentUserId): void
+    {
+        $email = $data->get('email');
+        $phone = $data->get('phone');
+
+        $existingUserByEmail = $this->userRepository->findByEmail($email);
+        if ($existingUserByEmail !== null && $existingUserByEmail->getId() !== $currentUserId) {
+            throw new \Exception('Пользователь с таким email уже существует!');
+        }
+
+        $existingUserByPhone = $this->userRepository->findByPhone($phone);
+        if ($existingUserByPhone !== null && $existingUserByPhone->getId() !== $currentUserId) {
+            throw new \Exception('Пользователь с таким телефоном уже существует!');
+        }
+    }
+
+    private function handleAvatarUpload(?string $file): void
+    {
+        if ($file === null && isset($_FILES['avatar_path']) && $_FILES['avatar_path']['error'] === UPLOAD_ERR_OK) {
+            throw new \Exception('Ошибка с расширением загружаемого файла!');
+        }
+    }
+
 
     private function deleteImage(User $user): void
     {
@@ -208,13 +223,13 @@ class UserController extends AbstractController
     }
     public function deleteUser(int $userId): Response
     {
-        $user = $this->table->find($userId);
+        $user = $this->userRepository->findById($userId);
 
         if (!$user) {
             $mess = 'Такого пользователя нет!';
             return $this->redirectToRoute('pageWithError', ['mess' => $mess]);
         }
-        $this->table->deleteUser($user);
+        $this->userRepository->delete($user);
         if ($user->getAvatarPath() != null) {
             $this->deleteImage($user);
         }
@@ -223,7 +238,7 @@ class UserController extends AbstractController
 
     public function viewUser(int $userId): Response
     {
-        $user = $this->table->find($userId);
+        $user = $this->userRepository->findById($userId);
         if (!$user) {
             $mess = 'Пользователя с таким идентификатором нет!';
             return $this->redirectToRoute('pageWithError', ['mess' => $mess]);
@@ -244,7 +259,7 @@ class UserController extends AbstractController
 
     public function viewAllUsers(): Response
     {
-        $view_all_users = $this->table->getAllUsers();
+        $view_all_users = $this->userRepository->listAll();
         return $this->render('view_all_users.html.twig', ['view_all_users' => $view_all_users]);
     }
     public function pageWithError(string $mess): Response
