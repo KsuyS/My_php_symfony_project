@@ -1,0 +1,16 @@
+{% extends "base.html.twig" %}
+{% block title %}Home page
+{% endblock %}
+{% block body %}
+	<div>
+		<div class="">
+			<form action="/signin" method="post">
+				<button class="" type="submit">Войти</button>
+			</form>
+			<form action="/signup" method="post">
+				<button class="" type="submit">
+					Зарегистрироваться</button>
+			</form>
+		</div>
+	</div>
+{% endblock %}

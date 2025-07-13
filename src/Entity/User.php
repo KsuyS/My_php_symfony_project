@@ -13,6 +13,8 @@ class User
     private string $email;
     private ?string $phone;
     private ?string $avatarPath;
+    private string $password;
+    private int $role;
 
     public function __construct(
         ?int $id, 
@@ -23,7 +25,9 @@ class User
         ?\DateTimeImmutable $birthDate,
         string $email,
         ?string $phone,
-        ?string $avatarPath)
+        ?string $avatarPath,
+        string $password,
+        int $role,)
     {
         $this->id = $id;
         $this->firstName = $firstName;
@@ -34,6 +38,18 @@ class User
         $this->email = $email;
         $this->phone = $phone;
         $this->avatarPath = $avatarPath;
+        $this->password = $password;
+        $this->role = $role;
+    }
+
+    public function getRole(): int
+    {
+        return $this->role;
+    }
+
+    public function getPassword(): string
+    {
+        return $this->password;
     }
 
     public function getId(): ?int
@@ -118,5 +134,15 @@ class User
     public function setAvatarPath(?string $avatarPath): void
     {
         $this->avatarPath = $avatarPath;
+    }
+
+    public function setRole($role): void
+    {
+        $this->role = $role;
+    }
+
+    public function setPassword($password): void
+    {
+        $this->password = $password;
     }
 }

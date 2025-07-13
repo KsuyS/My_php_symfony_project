@@ -18,6 +18,8 @@
         <field name="email"  column="email" type="string" length="255" nullable="false" />
         <field name="phone"  column="phone" type="string" length="255" nullable="true" />
         <field name="avatarPath"  column="avatar_path" type="string" length="255" nullable="true" />
+        <field name="password" column="password" type="string" length="255" nullable="false"/>
+        <field name="role" column="role" type="integer" nullable="false"/>
     </entity>
 
 </doctrine-mapping>

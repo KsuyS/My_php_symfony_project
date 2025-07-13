@@ -31,3 +31,20 @@ pageWithError:
    methods: GET
    controller: App\Controller\UserController::pageWithError
 
+signup:
+    path: /signup
+    controller: App\Controller\UserController::registerUser
+
+login:
+    path: /signin
+    controller: App\Controller\SecurityController::login
+
+logOut:
+    path: /logout
+    controller: App\Controller\SecurityController::logout
+    methods: GET
+
+home:
+    path: /home
+    methods: GET
+    controller: App\Controller\PostController::registerUser

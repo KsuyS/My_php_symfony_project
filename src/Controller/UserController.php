@@ -9,6 +9,8 @@ use App\Utils;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
+use Symfony\Component\HttpKernel\Exception\UnauthorizedHttpException;
+use Symfony\Component\Config\Definition\Exception\ForbiddenOverwriteException;
 
 
 class UserController extends AbstractController
@@ -26,9 +28,19 @@ class UserController extends AbstractController
         $this->userRepository = $userRepository;
     }
 
+    // public function index(): Response
+    // {
+    //     return $this->render(view: 'register_user_form.html.twig');
+    // }
+
     public function index(): Response
     {
-        return $this->render(view: 'register_user_form.html.twig');
+        return $this->render('/home.html.twig');
+    }
+
+    public function signUp(): Response
+    {
+        return $this->render('/register_user_form.html.twig');
     }
     private function getAvatarExtension(string $mimeType): ?string
     {
@@ -59,6 +71,8 @@ class UserController extends AbstractController
             $data->get('email'),
             empty($data->get('phone')) ? null : $data->get('phone'),
             null,
+            $data->get('password'),
+            $data->get('role'),
         );
 
         if ($this->userRepository->findByEmail($data->get('email')) != null) {
@@ -143,6 +157,8 @@ class UserController extends AbstractController
             'email' => $user->getEmail(),
             'phone' => $user->getPhone(),
             'avatarPath' => $user->getAvatarPath(),
+            'password' => $user->getPassword(),
+            'role' => $user->getRole(),
         ]);
     }
 
@@ -180,7 +196,8 @@ class UserController extends AbstractController
     {
         $user = $this->userRepository->findById($id);
         if ($user === null) {
-            throw new \Exception('Пользователь не найден!');
+            // throw new \Exception('Пользователь не найден!');
+            throw new UnauthorizedHttpException('');
         }
         return $user;
     }
