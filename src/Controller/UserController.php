@@ -10,12 +10,16 @@ use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\HttpKernel\Exception\UnauthorizedHttpException;
+use App\Service\PasswordHasher;
+use Symfony\Component\Security\Core\Security;
 use Symfony\Component\Config\Definition\Exception\ForbiddenOverwriteException;
+use Symfony\Component\HttpFoundation\Session\SessionInterface;
 
 
 class UserController extends AbstractController
 {
     private UserRepository $userRepository;
+    private PasswordHasher $passwordHasher;
     private const DATE_TIME_FORMAT = 'Y-m-d';
     private const SUPPORT_MIME_TYPES = [
         'image/png' => 'png',
@@ -23,15 +27,11 @@ class UserController extends AbstractController
         'image/gif' => 'gif',
     ];
 
-    public function __construct(UserRepository $userRepository)
+    public function __construct(UserRepository $userRepository, PasswordHasher $passwordHasher)
     {
         $this->userRepository = $userRepository;
+        $this->passwordHasher = $passwordHasher;
     }
-
-    // public function index(): Response
-    // {
-    //     return $this->render(view: 'register_user_form.html.twig');
-    // }
 
     public function index(): Response
     {
@@ -51,7 +51,7 @@ class UserController extends AbstractController
     {
 
         try {
-            $birthDate = Utils::parseDateTime($_POST['birth_date'], self::DATE_TIME_FORMAT);
+            $birthDate = Utils::parseDateTime($_POST['birth_date'], self::DATE_TIME_FORMAT) ?? null;
 
             if ($birthDate !== null) {
                 $birthDate = $birthDate->setTime(0, 0, 0);
@@ -98,7 +98,38 @@ class UserController extends AbstractController
             $this->userRepository->store($user);
         }
 
-        return $this->redirectToRoute('view_user', ['userId' => $userId], Response::HTTP_SEE_OTHER);
+        //return $this->redirectToRoute('view_user', ['userId' => $userId], Response::HTTP_SEE_OTHER);
+        return $this->render('/user/login.html.twig');
+    }
+
+    public function userAuthenticate(Request $request, SessionInterface $session): Response
+    {
+        $id = (int) $request->get('user_id');
+        $email = $request->get('email');
+        $password = $request->get('password');
+        $exist = $this->authentication($email, $password);
+        $user = $this->viewUser($email);
+        $session->set('user_mail', $email);
+        $session->set('user_id', $id);
+        if ($exist === 1) {
+            return $this->redirect('/assortment');
+        } elseif ($exist === 2) {
+            return $this->redirect('/admin');
+        } else {
+            return $this->render('/user/login.html.twig');
+        }
+    }
+
+    public function authentication(string $email, string $password): int
+    {
+        $existingUser = $this->userRepository->findByEmail($email);
+        $checkPassword = $this->passwordHasher->hash($password);
+        $rightPassword = $existingUser->getPassword();
+        var_dump($rightPassword, $checkPassword);
+        if (($existingUser !== null) and ($checkPassword === $rightPassword)) {
+            return $existingUser->getRole();
+        }
+        return 0;
     }
 
     private function downloadImage(int $id): ?string

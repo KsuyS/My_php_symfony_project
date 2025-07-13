@@ -36,8 +36,8 @@ signup:
     controller: App\Controller\UserController::registerUser
 
 login:
-    path: /signin
-    controller: App\Controller\SecurityController::login
+    path: /login
+    controller: App\Controller\SecurityController::userAuthenticate
 
 logOut:
     path: /logout
