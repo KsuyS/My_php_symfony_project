@@ -1,56 +1,43 @@
 index:
-   path: /
-   methods: GET
-   controller: App\Controller\UserController::index
-
-register_user:
-   path: /register_user
-   controller: App\Controller\UserController::registerUser
-
-view_user:
-   path: /view_user/{userId}
-   methods: GET
-   controller: App\Controller\UserController::viewUser 
-    
-view_all_users:
-   path: /view_all_users
-   methods: GET
-   controller: App\Controller\UserController::viewAllUsers  
-
-update_user:
-   path: /update_user/{userId}
-   controller: App\Controller\UserController::updateUser 
-
-delete_user:
-   path: /delete_user/{userId}
-   methods: GET
-   controller: App\Controller\UserController::deleteUser 
-
-pageWithError:
-   path: /pageWithError{mess}
-   methods: GET
-   controller: App\Controller\UserController::pageWithError
-
-signup:
-    path: /signup
-    controller: App\Controller\UserController::registerUser
+    path: /
+    controller: App\Controller\UserController::index
+    methods: GET
 
 signin:
     path: /signin
     controller: App\Controller\SecurityController::login
+    methods: POST
+    
+signup:
+    path: /signup
+    controller: App\Controller\UserController::signUp
+
+register_user:
+    path: /register
+    controller: App\Controller\UserController::registerUser
+    methods: POST
+
+view_user:
+    path: /view_user/{id}
+    controller: App\Controller\UserController::viewUser
+    methods: GET
+
+delete_user:
+    path: /delete_user/{id}
+    controller: App\Controller\UserController::deleteUser
+    methods: GET
+
+view_all_users:
+    path: /view_all_users
+    controller: App\Controller\UserController::view_all_users
+    methods: GET
 
 login:
     path: /login
-    controller: App\Controller\SecurityController::login
+    controller: App\Controller\UserController::userAuthenticate
+    methods: POST
 
 logOut:
     path: /logout
     controller: App\Controller\SecurityController::logout
     methods: GET
-
-home:
-    path: /home
-    methods: GET
-    controller: App\Controller\PostController::registerUser
-
-    

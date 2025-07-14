@@ -10,16 +10,23 @@
             <generator strategy="IDENTITY"/>
         </id>
 
-        <field name="firstName" column="first_name" type="string" length="255" nullable="false" />
-        <field name="lastName" column="last_name" type="string" length="255" nullable="false" />
+        <field name="firstName" column="first_name" type="string" length="200" nullable="false" />
+        <field name="lastName" column="last_name" type="string" length="200" nullable="false" />
         <field name="middleName" column="middle_name" type="string" length="255" nullable="true" />
         <field name="gender"  column="gender" type="string" length="255" nullable="false" />
-        <field name="birthDate"  column="birth_date" type="datetime_immutable" nullable="false" />
-        <field name="email"  column="email" type="string" length="255" nullable="false" />
-        <field name="phone"  column="phone" type="string" length="255" nullable="true" />
-        <field name="avatarPath"  column="avatar_path" type="string" length="255" nullable="true" />
-        <field name="password" column="password" type="string" length="255" nullable="false"/>
-        <field name="role" column="role" type="integer" nullable="false"/>
+        <field name="birthDate"  column="birth_date" type="string" nullable="false" />
+        <field name="email"  column="email" type="string" length="200" nullable="false" />
+        <field name="phone"  column="phone" type="string" length="200" nullable="true" />
+        <field name="avatarPath"  column="avatar_path" type="string" length="200" nullable="false" />
+        <field name="password"  column="password" type="string" length="200" nullable="false" />
+         <field name="role" column="role" type="string" nullable="false"/>
+
+        <unique-constraint name="email_idx">
+            <unique-column name="email"/>
+        </unique-constraint>
+        <unique-constraint name="phone_idx">
+            <unique-column name="phone"/> 
+        </unique-constraint>
     </entity>
 
 </doctrine-mapping>

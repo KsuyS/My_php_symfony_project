@@ -6,9 +6,9 @@
 		Введите свои данные:
 	</h1>
 	<form class="input-form" action="/login" method="post">
-		{% if error %}
-			<div class="alert alert-danger">{{ error.messageKey|trans(error.messageData, 'security') }}</div>
-		{% endif %}
+		{# {% if error %}
+			 <div class="alert alert-danger">{{ error }}</div>
+		{% endif %} #}
 		<div class="user-info">
 			<label class="input-label" for="email">Почта:
 			</label>

@@ -2,7 +2,6 @@
 declare(strict_types=1);
 
 namespace App\Repository;
-
 use App\Entity\User;
 use Doctrine\ORM\EntityManagerInterface;
 use Doctrine\ORM\EntityRepository;
@@ -15,7 +14,7 @@ class UserRepository
     public function __construct(EntityManagerInterface $entityManager)
     {
         $this->entityManager = $entityManager;
-        $this->repository = $entityManager->getRepository((User::class));
+        $this->repository = $entityManager->getRepository(User::class);
     }
 
     public function findById(int $id): ?User
@@ -25,7 +24,7 @@ class UserRepository
 
     public function findByEmail(string $email): ?User
     {
-        return $this->repository->findOneBy(['email' => (string) $email]);
+        return $this->repository->findOneBy(['email' => $email]);
     }
 
     public function findByPhone(string $phone): ?User
@@ -35,7 +34,7 @@ class UserRepository
 
     public function store(User $user): int
     {
-        $this->entityManager->persist(($user));
+        $this->entityManager->persist($user);
         $this->entityManager->flush();
         return $user->getId();
     }
@@ -49,8 +48,10 @@ class UserRepository
     /**
      * @return User[]
      */
+
     public function listAll(): array
     {
         return $this->repository->findAll();
     }
 }
+?>

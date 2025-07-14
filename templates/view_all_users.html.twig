@@ -6,11 +6,11 @@
 	<style></style>
 	<h1>Список пользователей:</h1>
 	<div>
-		{% for user in view_all_users %}
+		{% for user in user_list %}
 			<div class="user-item">
 				<a class="user-link" href="/view_user/{{ user.id }}">
-					<label>{{ user.firstName }}
-						{{ user.lastname }}</label>
+					<label>{{ user.first_name }}
+						{{ user.last_name }}</label>
 				</a>
 				<a href="/delete_user/{{ user.id }}">
 					<button>Удалить</button>

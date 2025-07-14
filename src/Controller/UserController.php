@@ -1,36 +1,23 @@
 <?php
 declare(strict_types=1);
-
 namespace App\Controller;
 
-use App\Entity\User;
-use App\Repository\UserRepository;
-use App\Utils;
+use App\Service\ImageServiceInterface;
+use App\Service\UserServiceInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
-use Symfony\Component\HttpKernel\Exception\UnauthorizedHttpException;
-use App\Service\PasswordHasher;
-use Symfony\Component\Security\Core\Security;
-use Symfony\Component\Config\Definition\Exception\ForbiddenOverwriteException;
 use Symfony\Component\HttpFoundation\Session\SessionInterface;
-
 
 class UserController extends AbstractController
 {
-    private UserRepository $userRepository;
-    private PasswordHasher $passwordHasher;
     private const DATE_TIME_FORMAT = 'Y-m-d';
-    private const SUPPORT_MIME_TYPES = [
-        'image/png' => 'png',
-        'image/jpeg' => 'jpeg',
-        'image/gif' => 'gif',
-    ];
-
-    public function __construct(UserRepository $userRepository, PasswordHasher $passwordHasher)
+    private UserServiceInterface $userService;
+    private ImageServiceInterface $imageService;
+    public function __construct(UserServiceInterface $userService, ImageServiceInterface $imageService)
     {
-        $this->userRepository = $userRepository;
-        $this->passwordHasher = $passwordHasher;
+        $this->userService = $userService;
+        $this->imageService = $imageService;
     }
 
     public function index(): Response
@@ -42,282 +29,133 @@ class UserController extends AbstractController
     {
         return $this->render('/register_user_form.html.twig');
     }
-    private function getAvatarExtension(string $mimeType): ?string
+
+
+    public function registerUser(Request $request): Response
     {
-        return self::SUPPORT_MIME_TYPES[$mimeType] ?? null;
-    }
-
-    public function registerUser(Request $data): ?Response
-    {
-        if ($data->isMethod('POST')) {
-            try {
-                $birthDateStr = $data->request->get('birth_date');
-                $birthDate = null;
-                if ($birthDateStr !== null) {
-                    $birthDate = Utils::parseDateTime($birthDateStr, self::DATE_TIME_FORMAT);
-                    if ($birthDate !== null) {
-                        $birthDate = $birthDate->setTime(0, 0, 0);
-                    }
-                }
-            } catch (\InvalidArgumentException $e) {
-                $mess = 'Перепроверьте поля формы!';
-                return $this->redirectToRoute('pageWithError', ['mess' => $mess]);
-            }
-
-            $user = new User(
-                null,
-                $data->get('first_name'),
-                $data->get('last_name'),
-                empty($data->get('middle_name')) ? null : $data->get('middle_name'),
-                $data->get('gender'),
-                $birthDate,
-                $data->get('email'),
-                empty($data->get('phone')) ? null : $data->get('phone'),
-                null,
-                $data->get('password'),
-                $data->get('role'),
-            );
-
-            if ($this->userRepository->findByEmail($data->get('email')) != null) {
-                $mess = 'Пользователь с таким email уже существует!';
-                return $this->redirectToRoute('pageWithError', ['mess' => $mess]);
-            }
-
-            if ($this->userRepository->findByPhone($data->get('phone')) != null) {
-                $mess = 'Пользователь с таким телефоном уже существует!';
-                return $this->redirectToRoute('pageWithError', ['mess' => $mess]);
-            }
-
-            $userId = $this->userRepository->store($user);
-            $file = $this->downloadImage($userId);
-
-            if ($file === null && isset($_FILES['avatar_path']) && $_FILES['avatar_path']['error'] === UPLOAD_ERR_OK) {
-                $mess = 'Ошибка с расширением загружаемого файла!';
-                return $this->redirectToRoute('pageWithError', ['mess' => $mess]);
-            }
-
-            if ($file != null) {
-                $user->setAvatarPath($file);
-                $this->userRepository->store($user);
-            }
-
-            //return $this->redirectToRoute('view_user', ['userId' => $userId], Response::HTTP_SEE_OTHER);
-            return $this->render('/login.html.twig');    
-        } else {
-            return $this->render('/register_user_form.html.twig');
-        }
+        $avatarPath = $this->imageService->moveImageToUploads($request->files->get('avatar_path'));
+        
+        $id = $this->userService->registerUser(
+            $request->get('first_name'),
+            $request->get('last_name'),
+            $request->get('middle_name'),
+            $request->get(key: 'gender'),
+            $request->get(key: 'birthdate'),
+            $request->get('email'),
+            $request->get('phone'),
+            $avatarPath,
+            $request->get('password'),
+            $request->get('role'),
+        );
+        return $this->render('/login.html.twig');
     }
 
     public function userAuthenticate(Request $request, SessionInterface $session): Response
     {
-        $id = (int) $request->get('user_id');
         $email = $request->get('email');
         $password = $request->get('password');
-        $exist = $this->authentication($email, $password);
-        $user = $this->viewUser($email);
+        $user = $this->userService->authentication($email, $password);
+
+        if ($user === null) {
+            return $this->render('/login.html.twig', [
+                'error' => 'Неверный email или пароль',
+            ]);
+        }
+
         $session->set('user_mail', $email);
-        $session->set('user_id', $id);
-        if ($exist === 1) {
-            return $this->redirectToRoute('view_user', ['userId' => $id], Response::HTTP_SEE_OTHER);
-        } elseif ($exist === 2) {
-            return $this->redirectToRoute('view_user', ['userId' => $id], Response::HTTP_SEE_OTHER);
+        $session->set('user_id', $user->getId());
+
+        if (intval($user->getRole()) === 1) {
+            return $this->redirect('/view_all_users');
+        } elseif (intval($user->getRole()) === 2) {
+            return $this->redirect('/view_all_users');
         } else {
             return $this->render('/login.html.twig');
         }
     }
 
-    public function authentication(string $email, string $password): int
+    public function updateForm(Request $request): Response
     {
-        $existingUser = $this->userRepository->findByEmail($email);
-        $checkPassword = $this->passwordHasher->hash($password);
-        $rightPassword = $existingUser->getPassword();
-        var_dump($rightPassword, $checkPassword);
-        if (($existingUser !== null) and ($checkPassword === $rightPassword)) {
-            return $existingUser->getRole();
-        }
-        return 0;
-    }
-
-    private function downloadImage(int $id): ?string
-    {
-        $uploadDir = __DIR__ . '/../../public/uploads/avatar';
-        $file = null;
-
-        if (!isset($_FILES['avatar_path'])) {
-            return $file;
-        }
-
-        switch ($_FILES['avatar_path']['error']) {
-            case UPLOAD_ERR_OK:
-                $extension = $this->getAvatarExtension($_FILES['avatar_path']['type']);
-                if ($extension === null) {
-                    return null;
-                }
-                $destination = $uploadDir . $id . '.' . $extension;
-                if (move_uploaded_file($_FILES['avatar_path']['tmp_name'], $destination)) {
-                    $file = 'avatar' . $id . '.' . $extension;
-                    return $file;
-                }
-                break;
-
-            case UPLOAD_ERR_NO_FILE:
-                return null;
-            default:
-                return null;
-        }
-    }
-
-    public function updateUser(int $userId, Request $data): Response
-    {
-        $user = $this->userRepository->findById($userId);
-        if (!$user) {
-            $mess = 'Вы не можете обновить пользователя с помощью этого идентификатора!';
-            return $this->redirectToRoute('pageWithError', ['mess' => $mess]);
-        }
-
-        if ($data->isMethod('post')) {
-            try {
-                $user = $this->updateUsersData($data);
-                return $this->redirectToRoute('view_user', ['userId' => $user->getId()]);
-            } catch (\Exception $e) {
-                return $this->redirectToRoute('pageWithError', ['mess' => $e->getMessage()]);
-            }
-        }
-
+        $user = $this->userService->viewUser($request->get('id'));
+        $dateString = $user->getBirthDate();
+        $newDate = date("Y-m-d", strtotime($dateString));
         return $this->render('update_user_form.html.twig', [
-            'userId' => $user->getId(),
-            'firstName' => $user->getFirstName(),
-            'lastName' => $user->getLastName(),
-            'middleName' => $user->getMiddleName(),
-            'gender' => $user->getGender(),
-            'birthDate' => Utils::convertDateTimeToStringForm($user->getBirthDate()),
-            'email' => $user->getEmail(),
-            'phone' => $user->getPhone(),
-            'avatarPath' => $user->getAvatarPath(),
-            'password' => $user->getPassword(),
-            'role' => $user->getRole(),
+            'user' => $user,
+            'new_date' => $newDate,
         ]);
     }
-
-    private function updateUsersData(Request $data): User
+    public function edit(Request $request): Response
     {
-        $id = (int) $data->get('user_id');
-        $user = $this->getUserById($id);
-
-        $this->validateUniqueEmailAndPhone($data, $id);
-
-        $birthDate = Utils::parseDateTime($data->get('birth_date'), self::DATE_TIME_FORMAT);
-        $birthDate = $birthDate->setTime(0, 0, 0);
-
-        $user->setFirstName($data->get('first_name'));
-        $user->setLastName($data->get('last_name'));
-        $user->setMiddleName(empty($data->get('middle_name')) ? null : $data->get('middle_name'));
-        $user->setGender($data->get('gender'));
-        $user->setBirthDate($birthDate);
-        $user->setEmail(empty($data->get('email')) ? null : $data->get('email'));
-        $user->setPhone(empty($data->get('phone')) ? null : $data->get('phone'));
-
-        $file = $this->downloadImage($id);
-        $this->handleAvatarUpload($file);
-
-        if ($file !== null) {
-            $user->setAvatarPath($file);
+        $id = $request->get('id');
+        $user = $this->userService->viewUser($id);
+        if (!$user) {
+            throw $this->createNotFoundException();
         }
-
-        $this->userRepository->store($user);
-
-        return $user;
-    }
-
-    private function getUserById(int $id): User
-    {
-        $user = $this->userRepository->findById($id);
-        if ($user === null) {
-            // throw new \Exception('Пользователь не найден!');
-            throw new UnauthorizedHttpException('');
-        }
-        return $user;
-    }
-
-    private function validateUniqueEmailAndPhone(Request $data, int $currentUserId): void
-    {
-        $email = $data->get('email');
-        $phone = $data->get('phone');
-
-        $existingUserByEmail = $this->userRepository->findByEmail($email);
-        if ($existingUserByEmail !== null && $existingUserByEmail->getId() !== $currentUserId) {
-            throw new \Exception('Пользователь с таким email уже существует!');
-        }
-
-        $existingUserByPhone = $this->userRepository->findByPhone($phone);
-        if ($existingUserByPhone !== null && $existingUserByPhone->getId() !== $currentUserId) {
-            throw new \Exception('Пользователь с таким телефоном уже существует!');
-        }
-    }
-
-    private function handleAvatarUpload(?string $file): void
-    {
-        if ($file === null && isset($_FILES['avatar_path']) && $_FILES['avatar_path']['error'] === UPLOAD_ERR_OK) {
-            throw new \Exception('Ошибка с расширением загружаемого файла!');
-        }
-    }
-
-
-    private function deleteImage(User $user): void
-    {
         $avatarPath = $user->getAvatarPath();
-        $filePath = __DIR__ . '/../../public/uploads/' . $avatarPath;
-        if (file_exists($filePath)) {
-            unlink($filePath);
-            echo "Файл успешно удален!";
-
+        if ($request->files->get('avatar_path') !== null) {
+            $newAvatar = $this->imageService->moveImageToUploads($request->files->get('avatar_path'));
+            $this->userService->editUser(
+                $request->get('id'),
+                $request->get('first_name'),
+                $request->get('last_name'),
+                $request->get('middle_name'),
+                $request->get('gender'),
+                $request->get('birth_date'),
+                $request->get('email'),
+                $request->get('phone'),
+                $newAvatar,
+            );
         } else {
-            echo "Файл не существует!";
+            $this->userService->editUser(
+                $request->get('id'),
+                $request->get('first_name'),
+                $request->get('last_name'),
+                $request->get('middle_name'),
+                $request->get('gender'),
+                $request->get('birth_date'),
+                $request->get('email'),
+                $request->get('phone'),
+                $avatarPath,
+            );
         }
-    }
-    public function deleteUser(int $userId): Response
-    {
-        $user = $this->userRepository->findById($userId);
-
-        if (!$user) {
-            $mess = 'Такого пользователя нет!';
-            return $this->redirectToRoute('pageWithError', ['mess' => $mess]);
-        }
-        $this->userRepository->delete($user);
-        if ($user->getAvatarPath() != null) {
-            $this->deleteImage($user);
-        }
-        return $this->redirectToRoute('view_all_users');
+        return $this->redirectToRoute('view_user', ['id' => $id], Response::HTTP_SEE_OTHER);
     }
 
-    public function viewUser(int $userId): Response
-    {
-        $user = $this->userRepository->findById($userId);
-        if (!$user) {
-            $mess = 'Пользователя с таким идентификатором нет!';
-            return $this->redirectToRoute('pageWithError', ['mess' => $mess]);
-        }
 
-        return $this->render('view_user.html.twig', [
-            'userId' => $user->getId(),
-            'firstName' => $user->getFirstName(),
-            'lastName' => $user->getLastName(),
-            'middleName' => $user->getMiddleName(),
-            'gender' => $user->getGender(),
-            'birthDate' => Utils::convertDateTimeToStringForm($user->getBirthDate()),
-            'email' => $user->getEmail(),
-            'phone' => $user->getPhone(),
-            'avatarPath' => $user->getAvatarPath(),
+    public function viewUser(SessionInterface $session): Response
+    {
+        $email = $session->get('email');
+        $user = $this->userService->viewUser($email);
+        if (!$user) {
+            throw $this->createNotFoundException();
+        } elseif (intval($user->getRole()) === 2) {
+            return $this->render('view_all_users.html.twig', [
+                'user' => $user
+            ]);
+        }
+        return $this->render('view_all_users.html.twig', [
+            'user' => $user
         ]);
     }
 
-    public function viewAllUsers(): Response
+    public function view_all_users(): Response
     {
-        $view_all_users = $this->userRepository->listAll();
-        return $this->render('view_all_users.html.twig', ['view_all_users' => $view_all_users]);
+        $users = $this->userService->view_all_users();
+        return $this->render('view_all_users.html.twig', [
+            'user_list' => $users
+        ]);
     }
-    public function pageWithError(string $mess): Response
+
+    public function deleteUser(Request $request): Response
     {
-        return $this->render('pageWithError.html.twig', ['mess' => $mess]);
+        $user = $this->userService->viewUser($request->get('id'));
+        if (!$user)
+        {
+            throw $this->createNotFoundException();
+        }
+        $this->imageService->deleteFileFromUploads($request->get('avatar_path'));
+        $this->userService->deleteUser($user);
+        return $this->redirectToRoute('user_list', ['id' => $request->get('id')], Response::HTTP_SEE_OTHER);
     }
+
 }

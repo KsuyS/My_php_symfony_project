@@ -1,55 +1,22 @@
 <?php
 declare(strict_types=1);
-
 namespace App\Entity;
+
 class User
 {
-    private ?int $id;
-    private string $firstName;
-    private string $lastName;
-    private ?string $middleName;
-    private string $gender; 
-    private ?\DateTimeImmutable $birthDate;
-    private string $email;
-    private ?string $phone;
-    private ?string $avatarPath;
-    private string $password;
-    private int $role;
-
     public function __construct(
-        ?int $id, 
-        string $firstName, 
-        string $lastName,
-        ?string $middleName,
-        string $gender,    
-        ?\DateTimeImmutable $birthDate,
-        string $email,
-        ?string $phone,
-        ?string $avatarPath,
-        string $password,
-        int $role,)
-    {
-        $this->id = $id;
-        $this->firstName = $firstName;
-        $this->lastName = $lastName;
-        $this->middleName = $middleName;
-        $this->gender = $gender;
-        $this->birthDate = $birthDate;
-        $this->email = $email;
-        $this->phone = $phone;
-        $this->avatarPath = $avatarPath;
-        $this->password = $password;
-        $this->role = $role;
-    }
-
-    public function getRole(): int
-    {
-        return $this->role;
-    }
-
-    public function getPassword(): string
-    {
-        return $this->password;
+        private ?int $id,
+        private string $firstName,
+        private string $lastName,
+        private ?string $middleName,
+        private string $gender,
+        private ?string $birthDate,
+        private string $email,
+        private ?string $phone,
+        private ?string $avatarPath,
+        private string $password,
+        private string $role,
+    ) {
     }
 
     public function getId(): ?int
@@ -62,19 +29,9 @@ class User
         return $this->firstName;
     }
 
-    public function setFirstName($first_name): void 
-    {
-        $this->firstName = $first_name;
-    }
-
     public function getLastName(): string
     {
         return $this->lastName;
-    }
-
-    public function setLastName($last_name): void
-    {
-        $this->lastName = $last_name;
     }
 
     public function getMiddleName(): ?string
@@ -82,48 +39,28 @@ class User
         return $this->middleName;
     }
 
-    public function setMiddleName($middle_name): void
+    public function getGender(): string
     {
-        $this->middleName = $middle_name;
-    }
-
-    public function getGender(): string{
         return $this->gender;
     }
 
-    public function setGender($gender): void
-    {
-        $this->gender = $gender;
-    }
-
-    public function getBirthDate(): ?\DateTimeImmutable
+    public function getBirthDate(): ?string
     {
         return $this->birthDate;
-    }
-
-    public function setBirthDate(?\DateTimeImmutable $birthDate): void
-    {
-        $this->birthDate = $birthDate;
     }
 
     public function getEmail(): string
     {
         return $this->email;
     }
-
-    public function setEmail($email): void
-    {
-        $this->email = $email;
-    }
-
     public function getPhone(): ?string
     {
         return $this->phone;
     }
 
-    public function setPhone($phone): void
+    public function getRole(): string
     {
-        $this->phone = $phone;
+        return $this->role;
     }
 
     public function getAvatarPath(): ?string
@@ -131,18 +68,52 @@ class User
         return $this->avatarPath;
     }
 
-    public function setAvatarPath(?string $avatarPath): void
+    public function getPassword(): string
+    {
+        return $this->password;
+    }
+
+    public function setId(int $id): void
+    {
+        $this->id = $id;
+    }
+
+    public function setFirstName(string $firstName): void
+    {
+        $this->firstName = $firstName;
+    }
+
+    public function setLastName(string $lastName): void
+    {
+        $this->lastName = $lastName;
+    }
+    public function setMiddleName(string $middleName): void
+    {
+        $this->middleName = $middleName;
+    }
+    public function setGender(string $gender): void
+    {
+        $this->gender = $gender;
+    }
+    public function setBirthDate(string $birth_date): void
+    {
+        $this->birth_date = $birth_date;
+    }
+    public function setEmail(string $email): void
+    {
+        $this->email = $email;
+    }
+    public function setPhone(string $phone): void
+    {
+        $this->phone = $phone;
+    }
+    public function setAvatarPath(string $avatarPath): void
     {
         $this->avatarPath = $avatarPath;
     }
 
-    public function setRole($role): void
+    public function setRole(string $role): void
     {
         $this->role = $role;
-    }
-
-    public function setPassword($password): void
-    {
-        $this->password = $password;
     }
 }
