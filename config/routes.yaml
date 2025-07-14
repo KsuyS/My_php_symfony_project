@@ -35,9 +35,13 @@ signup:
     path: /signup
     controller: App\Controller\UserController::registerUser
 
+signin:
+    path: /signin
+    controller: App\Controller\SecurityController::login
+
 login:
     path: /login
-    controller: App\Controller\SecurityController::userAuthenticate
+    controller: App\Controller\SecurityController::login
 
 logOut:
     path: /logout
@@ -48,3 +52,5 @@ home:
     path: /home
     methods: GET
     controller: App\Controller\PostController::registerUser
+
+    

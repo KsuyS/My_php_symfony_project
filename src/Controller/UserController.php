@@ -49,57 +49,63 @@ class UserController extends AbstractController
 
     public function registerUser(Request $data): ?Response
     {
-
-        try {
-            $birthDate = Utils::parseDateTime($_POST['birth_date'], self::DATE_TIME_FORMAT) ?? null;
-
-            if ($birthDate !== null) {
-                $birthDate = $birthDate->setTime(0, 0, 0);
+        if ($data->isMethod('POST')) {
+            try {
+                $birthDateStr = $data->request->get('birth_date');
+                $birthDate = null;
+                if ($birthDateStr !== null) {
+                    $birthDate = Utils::parseDateTime($birthDateStr, self::DATE_TIME_FORMAT);
+                    if ($birthDate !== null) {
+                        $birthDate = $birthDate->setTime(0, 0, 0);
+                    }
+                }
+            } catch (\InvalidArgumentException $e) {
+                $mess = 'Перепроверьте поля формы!';
+                return $this->redirectToRoute('pageWithError', ['mess' => $mess]);
             }
-        } catch (\InvalidArgumentException $e) {
-            $mess = 'Перепроверьте поля формы!';
-            return $this->redirectToRoute('pageWithError', ['mess' => $mess]);
+
+            $user = new User(
+                null,
+                $data->get('first_name'),
+                $data->get('last_name'),
+                empty($data->get('middle_name')) ? null : $data->get('middle_name'),
+                $data->get('gender'),
+                $birthDate,
+                $data->get('email'),
+                empty($data->get('phone')) ? null : $data->get('phone'),
+                null,
+                $data->get('password'),
+                $data->get('role'),
+            );
+
+            if ($this->userRepository->findByEmail($data->get('email')) != null) {
+                $mess = 'Пользователь с таким email уже существует!';
+                return $this->redirectToRoute('pageWithError', ['mess' => $mess]);
+            }
+
+            if ($this->userRepository->findByPhone($data->get('phone')) != null) {
+                $mess = 'Пользователь с таким телефоном уже существует!';
+                return $this->redirectToRoute('pageWithError', ['mess' => $mess]);
+            }
+
+            $userId = $this->userRepository->store($user);
+            $file = $this->downloadImage($userId);
+
+            if ($file === null && isset($_FILES['avatar_path']) && $_FILES['avatar_path']['error'] === UPLOAD_ERR_OK) {
+                $mess = 'Ошибка с расширением загружаемого файла!';
+                return $this->redirectToRoute('pageWithError', ['mess' => $mess]);
+            }
+
+            if ($file != null) {
+                $user->setAvatarPath($file);
+                $this->userRepository->store($user);
+            }
+
+            //return $this->redirectToRoute('view_user', ['userId' => $userId], Response::HTTP_SEE_OTHER);
+            return $this->render('/login.html.twig');    
+        } else {
+            return $this->render('/register_user_form.html.twig');
         }
-
-        $user = new User(
-            null,
-            $data->get('first_name'),
-            $data->get('last_name'),
-            empty($data->get('middle_name')) ? null : $data->get('middle_name'),
-            $data->get('gender'),
-            $birthDate,
-            $data->get('email'),
-            empty($data->get('phone')) ? null : $data->get('phone'),
-            null,
-            $data->get('password'),
-            $data->get('role'),
-        );
-
-        if ($this->userRepository->findByEmail($data->get('email')) != null) {
-            $mess = 'Пользователь с таким email уже существует!';
-            return $this->redirectToRoute('pageWithError', ['mess' => $mess]);
-        }
-
-        if ($this->userRepository->findByPhone($data->get('phone')) != null) {
-            $mess = 'Пользователь с таким телефоном уже существует!';
-            return $this->redirectToRoute('pageWithError', ['mess' => $mess]);
-        }
-
-        $userId = $this->userRepository->store($user);
-        $file = $this->downloadImage($userId);
-
-        if ($file === null && isset($_FILES['avatar_path']) && $_FILES['avatar_path']['error'] === UPLOAD_ERR_OK) {
-            $mess = 'Ошибка с расширением загружаемого файла!';
-            return $this->redirectToRoute('pageWithError', ['mess' => $mess]);
-        }
-
-        if ($file != null) {
-            $user->setAvatarPath($file);
-            $this->userRepository->store($user);
-        }
-
-        //return $this->redirectToRoute('view_user', ['userId' => $userId], Response::HTTP_SEE_OTHER);
-        return $this->render('/user/login.html.twig');
     }
 
     public function userAuthenticate(Request $request, SessionInterface $session): Response
@@ -112,11 +118,11 @@ class UserController extends AbstractController
         $session->set('user_mail', $email);
         $session->set('user_id', $id);
         if ($exist === 1) {
-            return $this->redirect('/assortment');
+            return $this->redirectToRoute('view_user', ['userId' => $id], Response::HTTP_SEE_OTHER);
         } elseif ($exist === 2) {
-            return $this->redirect('/admin');
+            return $this->redirectToRoute('view_user', ['userId' => $id], Response::HTTP_SEE_OTHER);
         } else {
-            return $this->render('/user/login.html.twig');
+            return $this->render('/login.html.twig');
         }
     }
 

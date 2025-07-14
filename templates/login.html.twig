@@ -6,20 +6,24 @@
 		Введите свои данные:
 	</h1>
 	<form class="input-form" action="/login" method="post">
+		{% if error %}
+			<div class="alert alert-danger">{{ error.messageKey|trans(error.messageData, 'security') }}</div>
+		{% endif %}
 		<div class="user-info">
 			<label class="input-label" for="email">Почта:
 			</label>
 			<input type="email" name="email" id="email" class="input-data" autocomplete="email" required autofocus>
-			<div class="user-info">
-				<label for="password" class="input-label">Пароль:
-				</label>
-				<input type="password" name="password" id="password" class="input-data" autocomplete="current-password" required>
-			</div>
-			<input type="hidden" name="_csrf_token" value="{{ csrf_token('authenticate') }}">
-			<button class="button" type="submit">Войти</button>
-			<button type="button" class="button">
-				<a class="links" href="{{ path('signup') }}">Я новый тут</a>
-			</button>
+		</div>
+		<div class="user-info">
+			<label for="password" class="input-label">Пароль:
+			</label>
+			<input type="password" name="password" id="password" class="input-data" autocomplete="current-password" required>
+		</div>
+		<input type="hidden" name="_csrf_token" value="{{ csrf_token('authenticate') }}">
+		<button class="button" type="submit">Войти</button>
+		<button type="button" class="button">
+			<a class="links" href="{{ path('signup') }}">Я новый тут</a>
+		</button>
 
-		</form>
-	{% endblock %}
+	</form>
+{% endblock %}

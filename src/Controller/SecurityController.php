@@ -11,8 +11,7 @@ class SecurityController extends AbstractController
 {
     public function login(AuthenticationUtils $authenticationUtils): Response
     {
-        if ($this->getUser())
-        {
+        if ($this->getUser()) {
             return $this->redirectToRoute('index');
         }
 
@@ -25,7 +24,6 @@ class SecurityController extends AbstractController
 
     public function logout(SessionInterface $session): Response
     {
-        $this->redirectToRoute('index');
         $session->invalidate();
         return $this->redirectToRoute('index');
     }
